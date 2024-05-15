@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         println!("{}", Local::now().format("%Y-%m-%d %H:%M:%S"));
         println!(
             "{:20}{:>8}{:>10}{:>8}{:>20}",
-            "Case", "Step", "P.[s]", "I.[s]", "ETA"
+            "Case", "%", "P.[s]", "I.[s]", "ETA"
         );
         print!("\r{:}",status?.join("\n"));
         stdout.flush().unwrap();

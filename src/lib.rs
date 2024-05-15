@@ -146,10 +146,18 @@ impl Case {
 
         Ok(self)
     }
+    /// Return the total number of time steps
+    pub fn total_step(&self) -> usize {
+        self.duration * RATE
+    }
     /// Returns the expected duration of the simulation in seconds
     pub fn eta_secs(&self) -> i64 {
-        let n_step = self.duration * RATE - self.step.unwrap();
+        let n_step = self.total_step() - self.step.unwrap();
         (&self.elapsed_per_step * n_step as f64) as i64
+    }
+    /// Returns the simulation percent complete
+    pub fn percent_complete(&self) -> i64 {
+        (100f64 * self.step.unwrap() as f64 / self.total_step() as f64) as i64
     }
 }
 
@@ -160,7 +168,7 @@ impl Display for Case {
             f,
             "{:<20}{:>8}{:>10.2}{:}{:>20}",
             self.name,
-            self.step.unwrap(),
+            self.percent_complete(),
             self.time,
             self.elapsed_per_step,
             eta.format("%Y-%m-%d %H:%M")
