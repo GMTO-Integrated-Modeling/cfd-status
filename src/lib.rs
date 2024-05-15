@@ -11,10 +11,14 @@ use std::{
 use chrono::{Duration, Local};
 use regex::Regex;
 
+/// Time in seconds between 2 status updates
 pub const UPDATE_TIME: usize = 180;
+// Path to CFD cases
 const ROOT: &str = "/shared";
+// Simulation sampling rate
 const RATE: usize = 20; //Hz
 
+/// Elapsed time per simulation time step
 #[derive(Debug, Default, Clone)]
 pub struct ElapsedPerStep {
     value: f64,
@@ -22,9 +26,11 @@ pub struct ElapsedPerStep {
 }
 
 impl ElapsedPerStep {
+    /// Creates a new object
     pub fn new() -> Self {
         Default::default()
     }
+    /// Updates the mean of a time step duration
     pub fn update(&mut self, value: f64) -> &mut Self {
         let n = self.sample as f64;
         self.sample += 1;
@@ -47,6 +53,7 @@ impl Mul<f64> for &ElapsedPerStep {
     }
 }
 
+/// CFD case
 #[derive(Debug, Default, Clone)]
 pub struct Case {
     name: String,
@@ -76,6 +83,7 @@ pub enum CaseError {
 pub type Result<T> = std::result::Result<T, CaseError>;
 
 impl Case {
+    /// Creates a new case
     pub fn new<S: ToString>(name: S, duration: usize, log: S) -> Self {
         Self {
             name: name.to_string(),
@@ -84,6 +92,7 @@ impl Case {
             ..Default::default()
         }
     }
+    /// Returns the path to the log file
     pub fn log_file(&self) -> String {
         Path::new(ROOT)
             .join(&self.name)
@@ -92,20 +101,23 @@ impl Case {
             .unwrap()
             .to_string()
     }
+    /// Updates case status
+    /// 
+    /// A parser for the output of `grep TimeStep <log_file>| tail -n1`
     pub fn update(&mut self) -> Result<&mut Self> {
         let pattern = Regex::new(r"TimeStep\s+(\d+): Time\s+(\d+\.\d+e[+-]?\d+)").unwrap();
 
-        let graph = Command::new("grep")
+        let grep = Command::new("grep")
             .arg("TimeStep")
             .arg(&self.log_file())
             .stdout(Stdio::piped())
             .spawn()?;
-        let svg = Command::new("tail")
+        let pipe = Command::new("tail")
             .arg("-n1")
-            .stdin(Stdio::from(graph.stdout.unwrap()))
+            .stdin(Stdio::from(grep.stdout.unwrap()))
             .stdout(Stdio::piped())
             .spawn()?;
-        let output = svg.wait_with_output()?;
+        let output = pipe.wait_with_output()?;
         if output.status.success() {
             let time_step = String::from_utf8(output.stdout)?;
 
@@ -134,6 +146,7 @@ impl Case {
 
         Ok(self)
     }
+    /// Returns the expected duration of the simulation in seconds
     pub fn eta_secs(&self) -> i64 {
         let n_step = self.duration * RATE - self.step.unwrap();
         (&self.elapsed_per_step * n_step as f64) as i64
