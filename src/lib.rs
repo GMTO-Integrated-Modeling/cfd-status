@@ -74,8 +74,10 @@ pub enum CaseError {
     ParseFloat(#[from] ParseFloatError),
     #[error("failed to parse String")]
     ParseInt(#[from] ParseIntError),
+    #[error("failed to build regular expression")]
+    Regex(#[from] regex::Error),
     #[error("No TimeStep/Time match found")]
-    Regex,
+    Capture,
     #[error("grep TimeStep failed")]
     Grep,
 }
@@ -102,10 +104,10 @@ impl Case {
             .to_string()
     }
     /// Updates case status
-    /// 
+    ///
     /// A parser for the output of `grep TimeStep <log_file>| tail -n1`
     pub fn update(&mut self) -> Result<&mut Self> {
-        let pattern = Regex::new(r"TimeStep\s+(\d+): Time\s+(\d+\.\d+e[+-]?\d+)").unwrap();
+        let pattern = Regex::new(r"TimeStep\s+(\d+): Time\s+(\d+\.\d+e[+-]?\d+)")?;
 
         let grep = Command::new("grep")
             .arg("TimeStep")
@@ -138,7 +140,7 @@ impl Case {
                         .update(UPDATE_TIME as f64 / diff_step as f64);
                 }
             } else {
-                return Err(CaseError::Regex);
+                return Err(CaseError::Capture);
             }
         } else {
             return Err(CaseError::Grep);
